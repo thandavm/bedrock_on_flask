@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Titan Summarization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        textarea, input[type="number"] {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+        button[type="submit"] {
+            padding: 10px 20px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        #response, #imageResponse, #anthropicResponse {
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+        #imageResponse img {
+            max-width: 500px;
+            max-height: 500px;
+            display: block;
+            margin: 0 auto;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            border-bottom: 1px dotted black;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: black;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            /* Position the tooltip */
+            position: absolute;
+            z-index: 1;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+        }
+        .file-upload input[type="file"] {
+            display: none;
+        }
+        #pdfViewer {
+            width: 100%;
+            height: 300px; /* Adjust the height as per your preference */
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+            overflow: auto; /* Add overflow property to enable scrolling if needed */
+        }
+        .pdfPage {
+            display: block;
+            page-break-after: always; /* Add page break after each page */
+            margin-bottom: 20px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.8.335/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.8.335/pdf.worker.min.js"></script>
+</head>
+<body>
+    <h1>Titan Text Summarization</h1>
+    <form id="pythonForm">
+        <label for="inputText">Input Text:</label>
+        <textarea id="inputText" name="inputText" rows="6" required></textarea>
+        <br>
+        <label for="maxTokenCount">Max Token Count(0-4096):</label>
+        <input type="number" id="maxTokenCount" name="maxTokenCount" required>
+        <br>
+        <button type="submit">Call Titan Text API</button>
+        <br>
+    </form>
+    <div id="response"></div>
+    <hr>
+    <h2>Upload PDF and Extract Text</h2>
+    <input type="file" id="pdfFile" accept="application/pdf">
+    <button class="file-upload"
+        id="uploadButton">Upload PDF</button>
+    <div id="pdfViewer"></div>
+    <script>
+
+        document.getElementById("pythonForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            var inputText = document.getElementById("inputText").value;
+            var maxTokenCount = document.getElementById("maxTokenCount").value;
+            var payload = {
+                "inputText": inputText,
+                "textGenerationConfig": {
+                    "maxTokenCount": parseInt(maxTokenCount),
+                    "stopSequences": [],
+                    "temperature": 0,
+                    "topP": 1
+                }
+            };
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/call-python1", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    document.getElementById("response").textContent = response.output_text;
+                }
+            };
+            xhr.send(JSON.stringify(payload));
+        });
+        // Event listener for the file upload button
+        document.getElementById("uploadButton").addEventListener("click", function() {
+            var fileInput = document.getElementById("pdfFile");
+            if (fileInput.files.length > 0) {
+                var file = fileInput.files[0];
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    var pdfData = event.target.result;
+                    var typedarray = new Uint8Array(pdfData);
+                    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                        var numPages = pdf.numPages;
+                        var pdfViewer = document.getElementById("pdfViewer");
+                        pdfViewer.innerHTML = ""; // Clear previous content
+                        for (var i = 1; i <= numPages; i++) {
+                            pdf.getPage(i).then(function(page) {
+                                var canvas = document.createElement("canvas");
+                                var context = canvas.getContext("2d");
+                                var viewport = page.getViewport({ scale: 1 });
+                                canvas.width = viewport.width;
+                                canvas.height = viewport.height;
+                                var renderContext = {
+                                    canvasContext: context,
+                                    viewport: viewport
+                                };
+                                page.render(renderContext).promise.then(function() {
+                                    var pdfPage = document.createElement("div");
+                                    pdfPage.className = "pdfPage";
+                                    pdfPage.appendChild(canvas);
+                                    pdfViewer.appendChild(pdfPage);
+                                    // Extract text from the page
+                                    page.getTextContent().then(function(textContent) {
+                                        var extractedText = "";
+                                        for (var j = 0; j < textContent.items.length; j++) {
+                                            extractedText += textContent.items[j].str + " ";
+                                        }
+                                        document.getElementById("inputText").value += extractedText;
+                                    });
+                                });
+                            });
+                        }
+                    }).catch(function(error) {
+                        console.log(error);
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        });
+    </script>
+</body>
+</html>

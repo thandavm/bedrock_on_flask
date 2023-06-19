@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Titan Chatbot App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .chat-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #F5F5F5;
+            border-radius: 4px;
+            padding: 20px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+        .chat-container h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .chat-messages {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .chat-messages p {
+            margin: 0 0 10px 0;
+        }
+        .user-input {
+            display: flex;
+        }
+        .user-input input[type="text"] {
+            flex: 1;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .user-input button {
+            padding: 5px 10px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h1>Titan Chatbot</h1>
+        <div class="chat-messages" id="chatMessages">
+            <p><strong>Titan Bot:</strong> Welcome to the Titan Chatbot!</p>
+        </div>
+        <div class="user-input">
+            <input type="text" id="userInput" placeholder="Type your message...">
+            <button type="button" id="sendMessage">Send</button>
+        </div>
+    </div>
+    <script>
+        document.getElementById("sendMessage").addEventListener("click", function() {
+            var userInput = document.getElementById("userInput").value;
+            var messageElement = document.createElement("p");
+            messageElement.innerHTML = "<strong>You:</strong> " + userInput;
+            document.getElementById("chatMessages").appendChild(messageElement);
+            var payload = {
+                "inputText": userInput,
+                "textGenerationConfig": {
+                    "maxTokenCount": 400,
+                    "stopSequences": [],
+                    "temperature": 0.8,
+                    "topP": 1
+                }
+            };
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/call-python1", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var response = JSON.parse(xhr.responseText);
+                    var botResponse = response.output_text;
+                    var botMessageElement = document.createElement("p");
+                    botMessageElement.innerHTML = "<strong>Titan Bot:</strong> " + botResponse;
+                    document.getElementById("chatMessages").appendChild(botMessageElement);
+                }
+            };
+            xhr.send(JSON.stringify(payload));
+            document.getElementById("userInput").value = "";
+        });
+    </script>
+</body>
+</html>

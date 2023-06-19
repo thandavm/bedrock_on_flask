@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bed Rock  </title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        textarea, input[type="number"] {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+        button[type="submit"] {
+            padding: 10px 20px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        button[type="onclick"] {
+            padding: 10px 20px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+        #response, #imageResponse, #anthropicResponse {
+            padding: 10px;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+        #imageResponse img {
+            max-width: 500px;
+            max-height: 500px;
+            display: block;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Titan Text API Call</h1>
+    <form id="pythonForm">
+        <label for="inputText">Input Text:</label>
+        <textarea id="inputText" name="inputText" rows="6" required></textarea>
+        <br>
+        <label for="maxTokenCount">Max Token Count(0-4096):</label>
+        <input type="number" id="maxTokenCount" name="maxTokenCount" required>
+        <br>
+        <button type="submit">Call Titan Text API</button>
+        <button type="submit" onclick="openIndex2()"> Summarization with Amazon Titan </button>
+        <button type="submit" onclick="openIndex3()"> Amazon Chatbot with Amazon Titan</button>
+        <button type="submit" onclick="openIndex5()"> Building Product Description with Titan</button>
+    </form>
+    <div id="response"></div>
+    <hr>
+    <h2>Stable-diffusion Image Api Call</h2>
+    <form id="imageForm">
+        <label for="imageText">Image Text:</label>
+        <textarea id="imageText" name="imageText" rows="3" required></textarea>
+        <br>
+        <button type="submit">Call Image API</button>
+    </form>
+    <div id="imageResponse"></div>
+    <hr>
+    <h2>Anthropic API Call</h2>
+    <form id="anthropicForm">
+        <label for="anthropicText">Anthropic Text:</label>
+        <textarea id="anthropicText" name="anthropicText" rows="3" required></textarea>
+        <br>
+        <button type="submit">Call Anthropic API</button>
+    </form>
+    <div id="anthropicResponse"></div>
+    <hr>
+    
+    <script>
+        document.getElementById("pythonForm").addEventListener("submit", function(event) {
+            event.preventDefault();
+            var inputText = document.getElementById("inputText").value;
+            var maxTokenCount = document.getElementById("maxTokenCount").value;
+            var payload = {
+                "inputText": inputText,
+                "textGenerationConfig": {
+                    "maxTokenCount": parseInt(maxTokenCount),
+                    "stopSequences": [],
+                    "temperature": 0,
+                    "topP": 1
+                }
+            };
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/api/call-python1", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        var response = JSON.parse(xhr.responseText);
+                        document.getElementById("response").textContent = response.output_text;
+                    }
+                };
+                xhr.send(JSON.stringify(payload));
+            });
+            document.getElementById("imageForm").addEventListener("submit", function(event) {
+                event.preventDefault();
+                var imageText = document.getElementById("imageText").value;
+                var payload = {
+                    "modelId": "stability.stable-diffusion-xl",
+                    "contentType": "application/json",
+                    "accept": "application/json",
+                    "body": JSON.stringify({
+                        "text_prompts": [{
+                            "text": imageText
+                        }],
+                        "cfg_scale": 10,
+                        "seed": 0,
+                        "steps": 50
+                    })
+                };
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "/api/call-python2", true);
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.responseType = "json";
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            var response = xhr.response;
+                            if (response.result === "success" && response.artifacts.length > 0) {
+                                var base64Data = response.artifacts[0].base64;
+                                var imageUrl = "data:image/jpeg;base64," + base64Data;
+                                var imageElement = document.createElement("img");
+                                imageElement.src = imageUrl;
+                                document.getElementById("imageResponse").innerHTML = "";
+                                document.getElementById("imageResponse").appendChild(imageElement);
+                            } else {
+                                document.getElementById("imageResponse").textContent = "Image API failed to generate the image.";
+                            }
+                        } else {
+                            document.getElementById("imageResponse").textContent = "Image API request failed.";
+                        }
+                    }
+                };
+                xhr.send(JSON.stringify(payload));
+            });
+            document.getElementById("anthropicForm").addEventListener("submit", function(event) {
+                event.preventDefault();
+                var anthropicText = document.getElementById("anthropicText").value;
+                var payload = {
+                    "modelId": "anthropic.claude-instant-v1",
+                    "contentType": "application/json",
+                    "accept": "*/*",
+                    "body": JSON.stringify({
+                        "prompt": anthropicText,
+                        "max_tokens_to_sample": 2048,
+                        "temperature": 0.5,
+                        "top_k": 250,
+                        "top_p": 1
+                    })
+                };
+                var xhr = new XMLHttpRequest();
+                xhr.open("POST", "/api/call-python3", true);
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        var response = JSON.parse(xhr.responseText);
+                        document.getElementById("anthropicResponse").textContent = response;
+                    }
+                };
+                xhr.send(JSON.stringify(payload));
+            });
+            function openIndex2() {
+                window.open("index2");
+            }
+            function openIndex3() {
+                window.open("index3");
+            }
+            function openIndex5() {
+                window.open("index5");
+            }
+        </script>
+    </body>
+</html>
